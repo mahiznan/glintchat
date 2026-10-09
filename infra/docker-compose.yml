@@ -19,8 +19,27 @@ services:
       retries: 20
     networks: [glint-net]
 
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [glint-net]
+
 networks:
   glint-net:
 
 volumes:
   artemis-data:
+  mariadb-data:
