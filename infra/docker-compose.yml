@@ -1,0 +1,26 @@
+name: glint
+
+services:
+  artemis:
+    image: apache/activemq-artemis:2.44.0
+    environment:
+      ARTEMIS_USER: ${ARTEMIS_USER}
+      ARTEMIS_PASSWORD: ${ARTEMIS_PASSWORD}
+      ANONYMOUS_LOGIN: "false"
+    ports:
+      - "61616:61616"   # core/AMQP/STOMP/MQTT/OpenWire acceptor
+      - "8161:8161"     # web console
+    volumes:
+      - artemis-data:/var/lib/artemis-instance
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/61616'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [glint-net]
+
+networks:
+  glint-net:
+
+volumes:
+  artemis-data:
