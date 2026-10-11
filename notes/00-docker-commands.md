@@ -95,6 +95,8 @@ Ways to access Redis
 
 Homebrew: no flag installs a formula (command-line tools, e.g. `redis`); `--cask` installs a macOS application (GUI apps such as RedisInsight). `brew info <name>` tells you which one a name is.
 
+Rule: do not use `KEYS pattern` outside a lab (it blocks the single-threaded server); use exact-key lookups, or `SCAN 0 MATCH presence:* COUNT 100` for diagnostics. See D14 in `docs/design-decisions.md`.
+
 Restart experiment: `set user:123 pod-2`, then `dc restart redis`, then `get user:123` (expect nothing). Compare with a MariaDB table, which survives a restart.
 
 ## Experiment log (fill in what you observe)
