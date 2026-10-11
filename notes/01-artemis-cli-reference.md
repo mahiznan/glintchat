@@ -92,3 +92,8 @@ Needs the `Origin` header. Broker name `0.0.0.0` is what our instance reports.
 5. Per-queue management attributes: `PurgeOnNoConsumers`, `Filter`, `Paused`, `MessagesAdded`.
 6. Per-address counters: `RoutedMessageCount` vs `UnRoutedMessageCount`.
 7. Check your command against what you intended: `topic://` vs `queue://`, hyphens, spelling.
+
+## 7. Which consumers share a queue (design rules, details in D11/D14)
+- **Gateway pods:** one queue **per pod** on a multicast address; one consumer each. Multicast copies (no round robin).
+- **notification-service replicas:** one shared, fixed-name durable queue; the replicas compete (each event processed once).
+- Round robin happens only between consumers of **one queue**, and across the queues of an **anycast** address. Check equal `MESSAGES ADDED` across pod queues to prove every pod got every event.

@@ -20,6 +20,7 @@ Contents
 7. Concurrent duplicate sends (S17)
 8. DB commit fails
 9. Relay publishes, but fails to mark the row (duplicate publish)
+10. Message states: what the user sees, the outbox row, and the push attempt
 
 ---
 
@@ -352,3 +353,70 @@ What to notice
 - The window between "publish" and "mark" cannot be removed, because two systems are involved. So duplicates are expected and absorbed.
 - A republish reuses the same `eventId`, which is what makes de-duplication possible (D16).
 - The leader lock (ShedLock) keeps this to one relay at a time. `SKIP LOCKED` and the dedupe are the safety nets underneath (D8).
+
+---
+
+## 10. Message states
+
+Three small state machines. The first is what users see (spec, "Client sync protocol", sections C and D). The other two are internal. Decisions: D3, D4, D9, D15.
+
+### 10a. What the user sees (per message, on the sender's side)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Sending: user hits Send, clientMsgId created and saved locally
+    Sending --> Sending: no ACK, retry with the same clientMsgId
+    Sending --> Sent: ACK after DB commit (messageId and seq)
+    Sending --> Failed: retries exhausted or rejected by the server
+    Failed --> Sending: user taps retry, same clientMsgId
+    Sent --> Delivered: recipient device ACK (message.delivered event)
+    Delivered --> Read: recipient views the conversation (message.read event)
+    Sent --> Read: read arrives although the delivery ACK was lost
+    Read --> [*]
+```
+
+| State | Set by | Stored | Notes |
+|---|---|---|---|
+| Sending | Sender's client | Client only | The message is saved locally before the first send, so a crash keeps the `clientMsgId` |
+| Sent | chat-service | MariaDB: the message row | Means safely stored only. It does not mean published or delivered |
+| Delivered | Recipient's client, recorded by chat-service | MariaDB per `(messageId, userId)` | Open: first device or all devices (see D18) |
+| Read | Recipient's client, recorded by chat-service | MariaDB as `lastReadSeq` per `(conversationId, userId)` | A cursor, not a per-message flag |
+| Failed | Sender's client | Client only | Shown to the user, who may retry |
+
+Rules for the client:
+- States only move forward, except Failed back to Sending by the user's explicit retry.
+- Read implies Delivered. Events can arrive out of order (a `message.read` may arrive before a `message.delivered`, and either may arrive before the sender's own ACK on another device), so the client applies the highest state it has seen and ignores a lower one that arrives later.
+- Delivered and Read are separate events and travel the same route as messages: database first, then the outbox, then the broker.
+- If the recipient is offline, the message simply stays at Sent. There is no separate "recipient offline" state today.
+
+### 10b. The outbox row (internal to chat-service)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unpublished: row inserted in the same transaction as the message
+    Unpublished --> Unpublished: publish fails or the relay crashes, retried on the next poll
+    Unpublished --> Published: broker confirms, then the relay marks published_at
+    Published --> Unpublished: crash between confirm and mark (the same eventId is published again)
+    Published --> [*]: removed after the retention window
+```
+
+The arrow from Published back to Unpublished is the duplicate-publish window from diagram 9. It is why consumers de-duplicate on `eventId`.
+
+### 10c. A push attempt (notification-service, Module 9b)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: event consumed, one attempt per messageId and deviceId
+    Pending --> Skipped: the device has a live socket
+    Pending --> Sent: provider accepted the push
+    Pending --> Retrying: 5xx, timeout or 429
+    Retrying --> Sent: a retry succeeded
+    Retrying --> DeadLettered: attempts exhausted
+    Pending --> TokenRemoved: provider says the token is invalid, the device token is deleted
+    Sent --> [*]
+    Skipped --> [*]
+    DeadLettered --> [*]
+    TokenRemoved --> [*]
+```
+
+The push dedupe key is `(messageId, deviceId)`, so a redelivered event does not send a second push. When Redis is down or has just restarted, presence is unknown rather than offline (D14), so Pending should wait or use the delivery-ACK rule and not jump to Sent.

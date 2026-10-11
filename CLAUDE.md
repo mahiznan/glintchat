@@ -40,7 +40,11 @@ If these documents disagree with what the user says now, the user's latest decis
 
 ## 4. Current state (update this section at the end of a working session)
 - **Module 0 (setup): infrastructure done and committed.** Artemis 2.44.0, MariaDB 11.4, Redis 7.4 run healthy; `./tests/smoke.sh` ends with ALL PASS; README written. Open: the user's own-words note `notes/00-setup.md` (they said they understand it and moved on; do not push, but remind once when a natural moment arises).
-- **Module 1 (messaging fundamentals): plan written** (`docs/superpowers/plans/2026-10-11-module-01-fundamentals.md`), **not started**. Next action: Task 1 (the `labs/art.sh` wrapper and baseline round trip), after the user answers the warm-up question (difference between `MESSAGES_ADDED` and `MESSAGE_COUNT`).
+- **Module 1 (messaging fundamentals): in progress** (plan: `docs/superpowers/plans/2026-10-11-module-01-fundamentals.md`). Done: wrapper `labs/art.sh`, address/queue/routing labs, multicast per-pod queues, Lab B part 1 (two competing consumers on `lab.compete`: 10/10, count 2, acked 20). The user now runs wrapper commands only (full form no longer required).
+  - **Next action: Lab B part 2** (messages first on fresh queue `lab.compete2`, consumer A with `--sleep 1000`, B started a few seconds later; the user writes the prediction first, expected lesson is consumer prefetch, to verify). Then Module 1 Tasks 5-10 (durable subscriptions, filters/groups, persistence/TTL, back-pressure, transactions/redelivery incl. the "ack after work" and consumer-crash redelivery check, notes + oral quiz gate), plus the follow-up lab for `--max-consumers 1` zombie protection and FQQN routing.
+  - **Open conversation thread:** the user was asked the cross-question for "pod dies, what happens to its consumer": why an empty new queue is acceptable (answer should be MariaDB plus the client's `lastSeq`/REST `afterSeq` resume) and the one case where a message could still be missed (the silent-loss zombie window, S18 heartbeat `latestSeq` proposal). Wait for their answer.
+  - Still owed by the user: answers to the earlier Q1-Q3 are done and corrected; own-words notes `notes/00-setup.md` and `notes/01-fundamentals.md`.
+  - Open decisions in D18: delivered semantics with several devices, server-side failure state, per-message read evidence, visible offline state, heartbeat `latestSeq` (S18).
 - Later modules (2 to 11, 9b) have no detailed plan yet; write each one just before starting it.
 
 ## 5. Core design in one page (details in the spec and decisions)
