@@ -91,6 +91,7 @@ A missing consumer ACK never goes back to the outbox; the outbox protects only t
 ## D11. Per-pod queues need a lifecycle policy (Module 8 detail)
 - **Problem**: a durable per-pod queue left behind after a permanent scale-down grows unbounded; a non-durable queue vanishes with its consumer and loses the events published meanwhile.
 - **Decision direction**: do not rely on the broker for gap recovery. Recovery comes from MariaDB plus the client's `lastSeenSeq` resume. For queue hygiene use message TTL/expiry, a max address size, and auto-delete of queues; avoid `BLOCK` on a shared broker without isolation.
+- **Leaning (Phase 1)**: non-durable per-pod queue, because a replaced pod gets a new name and the gap is recovered from MariaDB. The queue is created and the listener attached **before** the pod reports ready.
 - **To decide (Module 8)**: durable vs non-durable per-pod queues, concrete limits.
 - **Status**: To verify (Modules 8, 9).
 
@@ -108,6 +109,10 @@ A missing consumer ACK never goes back to the outbox; the outbox protects only t
 - **Decision**: the gateway pods, because only the pod holding a user's socket can write to it. Chat-service has no sockets and would need to forward to the right gateway anyway (same routing problem plus a hop, and it would become stateful about connections).
 - **Phase 1 shape**: one multicast address, one queue **per pod**. The number of queues grows with pods, never with users (not 1K, not 50K). Offline users have no socket, no queue and no broker footprint; their messages wait in MariaDB and are fetched by resume.
 - **Side concerns** (offline push, audit, unread counters) are independent consumers with their own queues on the same address, so they cannot slow or break live delivery.
+- **Who connects what**: OpenShift only chooses the pod for each socket at connect time. Each pod is an Artemis client with its **own queue** on one shared multicast address (`chat.events`), so there is one address and N queues, never per-pod addresses. Phase 2 targets a pod by sending to the **fully qualified queue name** (`chat.events::<podId>`); a plain send to `chat.events` stays as the broadcast fallback. To verify (Module 5/8).
+- **Presence shape for Phase 2**: Redis hash `presence:{userId}`, field `{sessionId}`, value `{podId}|{deviceId}|{platform}`, per-field TTL (~30 s, heartbeat ~10 s; Redis 7.4 hash-field expiry, verified on our 7.4.11). The relay unions the pods of all participants (including the sender's own devices, for multi-device sync) and publishes once per target pod; each pod then decides per socket (origin socket gets a status update only). Redis is a hint; the pod's in-memory socket map stays authoritative.
+- **Unknown is not offline**: when Redis is down or has just restarted, presence is empty, so every device would look offline and the notification-service could push to live devices. Treat presence as unknown in that case (delay the push, or use the delivery-ACK rule).
+- **Redis, later and as an optimisation**: start with Phase 1 broadcast and no Redis. Add Redis afterwards for (1) targeted routing, always with broadcast as the fallback so correctness never depends on Redis; (2) online/offline status; (3) the push decision, because the separate notification-service cannot see which sockets are live. Compare a presence-free push rule (push only if no delivery ACK within N seconds) in Module 9b. Redis holds only rebuildable data (TTL + heartbeat), so persistence is off (D2).
 - **Cost at 1K concurrent, ~25 msg/s, 4 pods**: about 100 deliveries/s from the broker, 75% discarded. Trivial; broadcast is fine here. Measure in Module 8.
 - **Status**: Decided; numbers to verify (Module 8).
 
@@ -214,3 +219,6 @@ A missing consumer ACK never goes back to the outbox; the outbox protects only t
 - Reassignment policy details to confirm in Module 6: customer sees both conversations grouped by RM; previous RM's access after transfer; whether the new RM can see the old conversation; reassignment back creates a new conversation.
 - Concurrency assumption (1K) and message rate need confirmation with real data (Module 11).
 - Production topology, address-settings, limits and HA of the existing AMQ (platform-team question list from Module 2).
+- Platform-team question: can our application role create non-durable queues under `chat.*` (queue-creation permission and auto-create allowed for that pattern), and can per-address limits (max size, TTL, address-full policy) be set so our queues cannot affect other applications?
+- Platform-team question: what is the OpenShift router idle timeout for WebSocket routes, and can it be raised per route?
+- Redis in production: version (hash-field expiry needs 7.4+; otherwise use sorted sets), HA, and whether a Redis is available to us at all.

@@ -37,6 +37,21 @@ services:
       retries: 20
     networks: [glint-net]
 
+  redis:
+    image: redis:7.4
+    # presence data is rebuildable (TTL + heartbeat), so persistence is off on purpose
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --save '' --appendonly no"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:6379:6379"   # reachable from this machine only
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [glint-net]
+
 networks:
   glint-net:
 
