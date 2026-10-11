@@ -7,7 +7,7 @@ Each module gets its own detailed plan, written just before the module starts (w
 | # | Module | Plan file | Status |
 |---|---|---|---|
 | 0 | Setup (Compose: Artemis 2.44.0, MariaDB, Redis) | `2026-10-09-module-00-setup.md` | Plan written |
-| 1 | Messaging fundamentals | `...-module-01-fundamentals.md` | Not started |
+| 1 | Messaging fundamentals | `2026-10-11-module-01-fundamentals.md` | Plan written |
 | 2 | Artemis deep dive (+ platform-team question list) | `...-module-02-artemis.md` | Not started |
 | 3 | Kafka deep dive | `...-module-03-kafka.md` | Not started |
 | 4 | AMQ vs Kafka decision exercise | `...-module-04-compare.md` | Not started |
