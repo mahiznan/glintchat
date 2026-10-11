@@ -16,6 +16,7 @@ Each module gets its own detailed plan, written just before the module starts (w
 | 7 | chat-service + outbox (persist-before-publish) | `...-module-07-chat-service.md` | Not started |
 | 8 | ws-gateway, Phase 1 broadcast, Phase 2 Redis | `...-module-08-gateway.md` | Not started |
 | 9 | Delivery guarantees, reconnect, scaling, deploy drills | `...-module-09-resilience.md` | Not started |
+| 9b | Offline push notifications (mocked FCM/APNs, multi-device) | `...-module-09b-notifications.md` | Not started |
 | 10 | MFE wiring (React Module Federation) | `...-module-10-mfe.md` | Not started |
 | 11 | Production readiness + 50K/1K capacity report | `...-module-11-capacity.md` | Not started |
 
