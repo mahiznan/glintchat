@@ -28,7 +28,7 @@ done
 
 # 2. Artemis: pinned version, console, send and receive
 out=$(dc exec -T artemis $ARTEMIS version 2>&1)
-[[ "$out" == *"2.44.0"* ]] && pass "artemis version is 2.44.0" || fail "artemis version is 2.44.0"
+[[ "$out" == *"2.43.0"* ]] && pass "artemis version is 2.43.0" || fail "artemis version is 2.43.0"
 
 code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8161/console/ || true)
 [[ "$code" == "200" || "$code" == "302" ]] \

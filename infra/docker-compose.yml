@@ -2,7 +2,7 @@ name: glint
 
 services:
   artemis:
-    image: apache/activemq-artemis:2.44.0
+    image: apache/activemq-artemis:2.43.0
     environment:
       ARTEMIS_USER: ${ARTEMIS_USER}
       ARTEMIS_PASSWORD: ${ARTEMIS_PASSWORD}

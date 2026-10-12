@@ -84,6 +84,8 @@ Needs the `Origin` header. Broker name `0.0.0.0` is what our instance reports.
 8. **Names matter.** `pod1` is not `pod-1`. Check names with `queue stat` before assuming something is missing.
 9. **A count of 0 never proves delivery.** Look at `MESSAGES ACKED`, the consumers' own output, and the address' `RoutedMessageCount`/`UnRoutedMessageCount`.
 
+10. **Competing consumers share only messages still in the queue (prefetch).** A Core consumer has a client-side buffer (consumer window, default 1 MiB, in bytes). If messages are already waiting when the first consumer attaches, the broker pushes them all into its buffer (`DELIVERING COUNT` rises, `MESSAGE COUNT` falls). A second consumer that attaches later gets nothing, however slow the first one is. Measured in Lab B part 2 (`lab.compete2`, default window): A consumed everything, B nothing, `CONSUMER COUNT` 2. With `consumerWindowSize=0` in the connection URL (`--url "tcp://localhost:61616?consumerWindowSize=0"`, full command form) the messages are dealt one at a time: A took the first ones alone, then they alternated once B attached (`lab.compete3`). Window `0` is fair but costs a round trip per message; `-1` is unlimited buffering. If the holder dies, its whole buffer returns to the queue, redelivered. AMQP has link credit/prefetch instead of the window (Module 2).
+
 ## 6. Troubleshooting ladder ("I published but my queue shows 0")
 1. Did the producer print `Produced: N`? (accepted by the broker only.)
 2. `queue stat` for all queues: did the messages land in a different or auto-created queue?

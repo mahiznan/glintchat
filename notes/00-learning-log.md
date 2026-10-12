@@ -6,7 +6,7 @@ Status: Artemis layer committed. MariaDB layer built and running, not yet commit
 - `up -d --wait`: create and start detached, return when healthy.
 - `stop`/`start`: container kept. `down`: container removed, **volume kept**. `down -v`: volume deleted, **data lost**.
 - Full command table: `notes/00-docker-commands.md`.
-- Pin image versions (`2.44.0`, `11.4`), never `latest`: a moving tag can change behaviour with no code change.
+- Pin image versions (`2.43.0`, `11.4`), never `latest`: a moving tag can change behaviour with no code change.
 - `.env.example` (committed, placeholders) + `.env` (git-ignored, real values). Committing `.env` and ignoring it later does not work: `.gitignore` does not affect already-tracked files.
 
 ## 2. Artemis concepts

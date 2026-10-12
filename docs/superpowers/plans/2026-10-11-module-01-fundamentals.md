@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (inline). Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a hands-on understanding of queues vs topics, competing consumers, durable subscriptions, filtering and ordering, persistence and TTL, back-pressure, and transactions and redelivery, using the running Artemis 2.44.0 and its CLI. Each lab ends with predictions checked against observations and cross-questions.
+**Goal:** Build a hands-on understanding of queues vs topics, competing consumers, durable subscriptions, filtering and ordering, persistence and TTL, back-pressure, and transactions and redelivery, using the running Artemis 2.43.0 and its CLI. Each lab ends with predictions checked against observations and cross-questions.
 
 **Architecture:** No new services. A tiny wrapper script (`labs/art.sh`) runs the Artemis CLI inside the container with the credentials from `infra/.env`. Observation uses the Artemis console (http://localhost:8161) and `artemis queue stat`.
 
@@ -15,7 +15,7 @@
 - Each lab uses its own address names (`lab.*`) so labs do not interfere. Clean up with the console or `artemis queue delete` at the end of each lab.
 
 ## Global Constraints
-- Artemis image `apache/activemq-artemis:2.44.0`; credentials from `infra/.env`.
+- Artemis image `apache/activemq-artemis:2.43.0`; credentials from `infra/.env`.
 - Chat context for every lesson: connect each concept back to the RM-customer chat design (spec, decisions D3, D4, D9, D14).
 - Some results below are expectations from the Artemis documentation and experience, not verified on this stack. A different observation is valuable data: report it, do not hide it. Where a lab needs real acknowledgement control, it is deferred to the Module 5 Java lab.
 

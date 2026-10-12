@@ -36,7 +36,7 @@ Design and decisions
 
 | Service | Image | Host port | Purpose |
 |---|---|---|---|
-| artemis | `apache/activemq-artemis:2.44.0` | 61616 (broker), 8161 (web console) | Message broker |
+| artemis | `apache/activemq-artemis:2.43.0` | 61616 (broker), 8161 (web console) | Message broker |
 | mariadb | `mariadb:11.4` | 3306 | Source of truth for chat data |
 | redis | `redis:7.4` | 6379 (loopback only) | Presence and cache, rebuildable, persistence off |
 
