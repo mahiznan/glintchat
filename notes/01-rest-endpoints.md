@@ -18,7 +18,7 @@ Conventions: every request carries the user's token (`userId` comes from the tok
 | `GET /conversations` | The caller's conversations, with last message preview, `lastSeq`, unread count, and counterpart info. Paginated. |
 | `GET /conversations/{conversationId}` | Details and participants. Checks the caller is a participant. |
 | `POST /conversations` | Create a conversation (for example the customer starts a chat; the RM is assigned by the assignment rule). Body includes a client request id for idempotency. |
-| `POST /conversations/{id}/transfer` | Reassign the customer to another RM (supervisor role). Closes this conversation and creates a new one with the new RM (new `conversationId`, `seq` from 1); returns the new id. Idempotent on a request id. History visibility for the new RM is a Module 6 policy. |
+| `POST /conversations/{id}/participants` and `DELETE /conversations/{id}/participants/{userId}` | Add or remove an RM in an existing conversation (role and rules to decide in Module 6; replaces the earlier `transfer` idea, which created a new conversation). Records a join/leave system event with a `seq`. Idempotent on a request id. History visibility for a joining RM is a Module 6 policy. |
 | `POST /conversations/{id}/close` | Close a conversation (status, not delete; retention applies). |
 
 ### Messages and sync

@@ -31,7 +31,7 @@
 **Files:**
 - Create: `labs/art.sh`
 
-- [ ] **Step 1: Write the wrapper**
+- [x] **Step 1: Write the wrapper**
 
 ```bash
 #!/usr/bin/env bash
@@ -45,7 +45,7 @@ exec docker compose --env-file infra/.env -f infra/docker-compose.yml exec artem
   --user "$ARTEMIS_USER" --password "$ARTEMIS_PASSWORD" --url tcp://localhost:61616
 ```
 
-- [ ] **Step 2: Make it executable and run a round trip**
+- [x] **Step 2: Make it executable and run a round trip**
 
 ```bash
 chmod +x labs/art.sh
@@ -54,7 +54,7 @@ chmod +x labs/art.sh
 ```
 Expected: the consumer prints `Received hi`.
 
-- [ ] **Step 3: Learn the observation tools**
+- [x] **Step 3: Learn the observation tools**
 
 ```bash
 ./labs/art.sh queue stat --queueName lab.baseline
@@ -67,9 +67,9 @@ Pause for review.
 
 **Concepts:** a queue stores messages until a consumer takes them; FIFO order; each message goes to exactly one consumer.
 
-- [ ] **Step 1: Predict.** Send 5 messages to `lab.p2p` with no consumer running. What does `MESSAGE_COUNT` show? Then a consumer takes 3: what are the last two left, and in what order do they come out?
+- [x] **Step 1: Predict.** Send 5 messages to `lab.p2p` with no consumer running. What does `MESSAGE_COUNT` show? Then a consumer takes 3: what are the last two left, and in what order do they come out?
 
-- [ ] **Step 2: Run**
+- [x] **Step 2: Run**
 
 ```bash
 for i in 1 2 3 4 5; do ./labs/art.sh producer --destination queue://lab.p2p --message-count 1 --message "m$i"; done
@@ -79,7 +79,7 @@ for i in 1 2 3 4 5; do ./labs/art.sh producer --destination queue://lab.p2p --me
 ./labs/art.sh consumer --destination queue://lab.p2p --message-count 2 --verbose
 ```
 
-- [ ] **Step 3: Cross-questions**
+- [x] **Step 3: Cross-questions**
 1. A producer sent messages while no consumer existed, and nothing was lost. What is different about the earlier multicast case with no queue (the `lab.empty` experiment)?
 2. After consuming, `MESSAGES_ADDED` stays at 5 but `MESSAGE_COUNT` goes to 0. What does each number tell an operator?
 3. In our chat, which part (if any) is a plain queue like this, and which part is not?
@@ -90,9 +90,9 @@ Pause for review.
 
 **Concepts:** several consumers on one queue share the work; each message goes to one; per-message order is kept per consumer but not globally; prefetch can make distribution uneven.
 
-- [ ] **Step 1: Predict.** Two consumers are waiting on `lab.work` when 20 messages arrive. Roughly how are they split? And if the 20 messages are sent **first**, and only then does consumer 1 start, who gets them?
+- [x] **Step 1: Predict.** Two consumers are waiting on `lab.work` when 20 messages arrive. Roughly how are they split? And if the 20 messages are sent **first**, and only then does consumer 1 start, who gets them?
 
-- [ ] **Step 2: Run, consumers first** (two terminals, then a third for the producer)
+- [x] **Step 2: Run, consumers first** (two terminals, then a third for the producer)
 
 Terminal 1 and 2:
 ```bash
@@ -104,9 +104,9 @@ Terminal 3:
 ```
 Count how many each consumer printed (the consumer prints a line per message; count them, or compare `queue stat` while running).
 
-- [ ] **Step 3: Run, messages first.** Stop consumers. Send 20 messages. Start consumer 1 alone (with `--sleep 200`), then start consumer 2 a few seconds later. Watch who processes what.
+- [x] **Step 3: Run, messages first.** Stop consumers. Send 20 messages. Start consumer 1 alone (with `--sleep 200`), then start consumer 2 a few seconds later. Watch who processes what.
 
-- [ ] **Step 4: Cross-questions**
+- [x] **Step 4: Cross-questions**
 1. What happened to the distribution in step 3, and why? (Hint: a consumer takes a batch ahead of time into a local buffer. Look up the `consumerWindowSize` setting.)
 2. Messages 1 to 20 were sent in order. In what sense is the order preserved when two consumers share the queue, and in what sense is it lost?
 3. For chat, if two gateway pods consumed one queue like this, what would go wrong? (This is why we use a queue **per pod** on a multicast address.)
@@ -117,9 +117,9 @@ Pause for review.
 
 **Concepts:** a topic (multicast) copies each message to every subscriber; subscribers only get messages sent while they exist.
 
-- [ ] **Step 1: Predict.** Two subscribers are waiting on `topic://lab.news`. You publish 3 messages. How many does each get? Then you publish 2 more with **no** subscribers running. A third subscriber starts afterwards: does it get any?
+- [x] **Step 1: Predict.** Two subscribers are waiting on `topic://lab.news`. You publish 3 messages. How many does each get? Then you publish 2 more with **no** subscribers running. A third subscriber starts afterwards: does it get any?
 
-- [ ] **Step 2: Run** (terminals 1 and 2 as subscribers)
+- [x] **Step 2: Run** (terminals 1 and 2 as subscribers)
 
 ```bash
 ./labs/art.sh consumer --destination topic://lab.news --message-count 100 --receive-timeout 60000 --verbose
@@ -130,7 +130,7 @@ Publisher:
 ```
 Then stop both subscribers, publish 2 more, start a new subscriber, and check what it receives. Look at `lab.news` in the console: what queues exist while subscribers are running, and what after they stop?
 
-- [ ] **Step 3: Cross-questions**
+- [x] **Step 3: Cross-questions**
 1. What did the broker do with the 2 messages that had no subscribers? How would you detect it? (Recall `send-to-dla-on-no-route`.)
 2. How is this the same as, and how different from, Phase 1 broadcast in our chat design?
 3. Does a subscriber that is slow affect the other subscriber? What would an operator watch?
@@ -141,9 +141,9 @@ Pause for review.
 
 **Concepts:** a durable subscription keeps its queue while the subscriber is away; a non-durable one disappears.
 
-- [ ] **Step 1: Predict.** A durable subscriber (clientID `c1`) reads one message and disconnects. While it is away, 4 messages are published. When it comes back, how many does it receive? What happens to the same experiment with a **non-durable** subscriber?
+- [x] **Step 1: Predict.** A durable subscriber (clientID `c1`) reads one message and disconnects. While it is away, 4 messages are published. When it comes back, how many does it receive? What happens to the same experiment with a **non-durable** subscriber?
 
-- [ ] **Step 2: Run**
+- [x] **Step 2: Run**
 
 ```bash
 ./labs/art.sh consumer --destination topic://lab.durable --durable --clientID c1 --message-count 1 --receive-timeout 20000 --verbose
@@ -155,9 +155,9 @@ Pause for review.
 ```
 Re-attach the durable subscriber with the same clientID and read 4. Repeat the idea with a non-durable subscriber (omit `--durable`) and compare.
 
-- [ ] **Step 3: Orphan check.** Leave the durable subscription unused, publish 50 more, and watch `MESSAGE_COUNT` grow in the console. Then delete the subscription's queue in the console.
+- [x] **Step 3: Orphan check.** Leave the durable subscription unused, publish 50 more, and watch `MESSAGE_COUNT` grow in the console. Then delete the subscription's queue in the console.
 
-- [ ] **Step 4: Cross-questions**
+- [x] **Step 4: Cross-questions**
 1. What is the risk of a durable subscription whose subscriber never comes back? (This is the orphan per-pod queue problem, D11.)
 2. In our design recovery comes from MariaDB, so do we need durable per-pod queues at all?
 3. What does `clientID` identify, and what happens if two live consumers use the same one?
@@ -168,9 +168,9 @@ Pause for review.
 
 **Concepts:** selectors (filters) pick messages by properties; message groups keep related messages on one consumer to preserve their order.
 
-- [ ] **Step 1: Predict.** Send 3 messages with property `type=vip` and 3 with `type=normal`. A consumer with filter `type='vip'` runs. How many does it get, and what is left in the queue?
+- [x] **Step 1: Predict.** Send 3 messages with property `type=vip` and 3 with `type=normal`. A consumer with filter `type='vip'` runs. How many does it get, and what is left in the queue?
 
-- [ ] **Step 2: Run (filter)**
+- [x] **Step 2: Run (filter)**
 
 ```bash
 ./labs/art.sh producer --destination queue://lab.filter --message-count 3 --message "v" --properties '[{"type":"string","key":"type","value":"vip"}]'
@@ -179,7 +179,7 @@ Pause for review.
 ./labs/art.sh queue stat --queueName lab.filter
 ```
 
-- [ ] **Step 3: Predict and run (groups).** Two consumers wait on `lab.group`. A producer sends 6 messages with `--group conv-A` and 6 with `--group conv-B`. Which consumer(s) get conv-A messages? Does either group get split?
+- [x] **Step 3: Predict and run (groups).** Two consumers wait on `lab.group`. A producer sends 6 messages with `--group conv-A` and 6 with `--group conv-B`. Which consumer(s) get conv-A messages? Does either group get split?
 
 ```bash
 # two consumer terminals
@@ -189,7 +189,7 @@ Pause for review.
 ./labs/art.sh producer --destination queue://lab.group --message-count 6 --group conv-B --message "B"
 ```
 
-- [ ] **Step 4: Cross-questions**
+- [x] **Step 4: Cross-questions**
 1. Why might per-conversation ordering matter when workers share a queue, and how do message groups give it?
 2. What do you give up when a group's consumer is slow or dies? (Think about hot groups and failover.)
 3. Our design orders messages by `seq` from MariaDB and does not rely on broker ordering for correctness. Why is that the safer choice?
@@ -200,9 +200,9 @@ Pause for review.
 
 **Concepts:** persistent messages are written to the journal and survive a broker restart; non-persistent ones are not; TTL expires messages into the expiry address.
 
-- [ ] **Step 1: Predict.** Send 3 persistent and 3 non-persistent messages to `lab.persist`, restart Artemis, and count. Then send 2 messages with a 5-second TTL, wait 10 seconds, and look at the queue.
+- [x] **Step 1: Predict.** Send 3 persistent and 3 non-persistent messages to `lab.persist`, restart Artemis, and count. Then send 2 messages with a 5-second TTL, wait 10 seconds, and look at the queue.
 
-- [ ] **Step 2: Run**
+- [x] **Step 2: Run**
 
 ```bash
 ./labs/art.sh producer --destination queue://lab.persist --message-count 3 --message "p"
@@ -218,7 +218,7 @@ sleep 10
 ```
 (If `ExpiryQueue` does not exist on this broker, look in the console under addresses for the expiry address in effect.)
 
-- [ ] **Step 3: Cross-questions**
+- [x] **Step 3: Cross-questions**
 1. A message is sent persistently and the producer got no error. Is it safe? What exactly has the broker promised? (Hint: when does a persistent send return?)
 2. Where do expired messages go, and who looks at them? What does that mean for an unmonitored expiry queue?
 3. Which of our chat events must be persistent, and which could tolerate loss because MariaDB can recover them?
