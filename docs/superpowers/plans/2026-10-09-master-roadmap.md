@@ -19,6 +19,7 @@ Each module gets its own detailed plan, written just before the module starts (w
 | 9b | Offline push notifications (mocked FCM/APNs, multi-device) | `...-module-09b-notifications.md` | Not started |
 | 10 | MFE wiring (React Module Federation) | `...-module-10-mfe.md` | Not started |
 | 11 | Production readiness + 50K/1K capacity report | `...-module-11-capacity.md` | Not started |
+| S | Happy-path slice (chat-service + ws-gateway + plain page, built early at the user's request) | `2026-10-12-happy-path-slice.md` | **Plan written**, not started; spec `specs/2026-10-12-happy-path-slice-design.md` |
 
 Teaching loop per module: concept note, predict, run and observe, break it, cross-questions, gate.
 
