@@ -20,6 +20,7 @@ Each module gets its own detailed plan, written just before the module starts (w
 | 10 | MFE wiring (React Module Federation) | `...-module-10-mfe.md` | Not started |
 | 11 | Production readiness + 50K/1K capacity report | `...-module-11-capacity.md` | Not started |
 | S | Happy-path slice (chat-service + ws-gateway + plain page, built early at the user's request) | `2026-10-12-happy-path-slice.md` | **Plan written**, not started; spec `specs/2026-10-12-happy-path-slice-design.md` |
+| S2 | Failure drills on the slice (break it on purpose, verify the design, resource-release audit) | `2026-10-15-failure-drills.md` | **Plan written**, not started; results in `docs/failure-drills-results.md`. The next plan, "production implementation from the design documents", is written after the drills. |
 
 Teaching loop per module: concept note, predict, run and observe, break it, cross-questions, gate.
 
