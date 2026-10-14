@@ -2468,6 +2468,32 @@ Expected: log line `created queue chat.events::pod-1`, app on 8081. Then `./labs
 
 ---
 
+### Deferred task: outbox cleanup job (planned 2026-10-15, NOT part of the slice, not built)
+
+Decision (user): published outbox rows are kept for a **configurable duration**, then deleted by a scheduled **overnight** job. See D18 "Outbox cleanup".
+
+**Rules**
+- Delete only rows with `published_at IS NOT NULL AND published_at < now - retention`. Never touch unpublished rows.
+- Delete in small batches by `id` (for example `DELETE FROM outbox WHERE published_at IS NOT NULL AND published_at < ? ORDER BY id LIMIT ?`), looping with a short pause, until nothing is left or a time budget is used. A night that was missed is then caught up by the next run.
+- The existing `idx_unpublished (published_at, id)` should serve the `published_at < ?` scan; confirm with `EXPLAIN` when this is built.
+- One runner at a time: the same leader lock as the relay (D8, ShedLock), so two instances do not both delete.
+
+**Configuration (names proposed, values to be chosen by the user)**
+- `chat.outbox.retention` (a duration; default to be decided, 7 days was only a suggestion), `chat.outbox.cleanup.cron` (overnight, with an explicit time zone), `chat.outbox.cleanup.batch-size`, `chat.outbox.cleanup.max-runtime`.
+
+**Tests to write first (Testcontainers, a fixed `Clock`)**
+1. An old published row is deleted; a recent published row is kept (boundary around the retention).
+2. An unpublished row is never deleted, however old.
+3. More rows than one batch are all deleted in one run; the run stops at the time budget.
+4. Changing the retention changes the result (configuration is honoured).
+5. A second concurrent run does nothing harmful (leader lock or idempotent deletes).
+
+**Operations**
+- Metrics and alerts: rows deleted per run, outbox row count, age of the oldest unpublished row (a stuck relay), and "cleanup has not run for more than N days".
+- To verify: that overnight is really quiet (customers may use the app at any hour; check real traffic in Module 11), and the production database version (batch `DELETE ... ORDER BY id LIMIT` and `SKIP LOCKED`), which the user will confirm.
+
+---
+
 ## Self-review (done when this plan was written)
 
 - **Spec coverage:** send transaction and idempotency (Task 3), history with visibility (Task 5), relay and `chat.events` publishing (Task 4), pod queue (Task 7), socket delivery with origin skipped (Tasks 6 and 8), page (Task 9), seed (Task 9), Java 21 rule (Task 0), documentation (Task 10). Out-of-scope items are listed in the spec and not planned.
