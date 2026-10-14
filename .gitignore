@@ -4,3 +4,7 @@ target/
 *.log
 .DS_Store
 claude-resume.txt
+
+# IDE project folders (local only)
+.idea/
+.vscode/
