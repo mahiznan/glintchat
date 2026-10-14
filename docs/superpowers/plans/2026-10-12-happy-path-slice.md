@@ -1914,6 +1914,8 @@ public class PodEventListener {
 
 ### Task 8: The WebSocket endpoint and the send flow
 
+> **Added 2026-10-15 (from the Task 7 review):** `PodEventListener` now has `@DependsOn("podQueueProvisioner")`. The first Spring-context test with a real Artemis in this task must also prove the ordering: start the context, assert that `chat.events::<podId>` exists, and that an event published to `chat.events` reaches `EventRouter`. Known gap, not solved in the slice: the queue is created once at startup and is NOT recreated if it disappears while the pod runs (see D18).
+
 **Files:**
 - Create: `chat/ChatServiceClient.java`, `chat/SendResponse.java`, `socket/WebSocketClientSocket.java`, `ws/ChatWebSocketHandler.java`, `ws/WebSocketConfig.java`
 - Test: `src/test/java/com/glint/gateway/GatewayIntegrationTestBase.java`, `ws/WebSocketFlowTest.java`
