@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/services/chat-service/src/main/resources/db/migration/V1__init.sql" value="6432d336-6031-4f64-a17d-14dbbd3ceb19" />
+  </component>
+</project>

@@ -281,11 +281,10 @@ Expected: FAIL (tables missing). If the failure is a compile error on a Testcont
 CREATE TABLE conversation (
   id           BINARY(16)   NOT NULL,
   customer_id  VARCHAR(64)  NOT NULL,
-  first_rm_id  VARCHAR(64)  NOT NULL,
   last_seq     BIGINT       NOT NULL DEFAULT 0,
   created_at   DATETIME(3)  NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_customer_first_rm (customer_id, first_rm_id)
+  KEY idx_customer (customer_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE conversation_participant (
@@ -559,8 +558,8 @@ public final class TestData {
     public static UUID conversation(JdbcTemplate jdbc, IdGenerator ids, String customer, String... rms) {
         UUID id = ids.newId();
         Timestamp now = Timestamp.from(Instant.now());
-        jdbc.update("INSERT INTO conversation (id, customer_id, first_rm_id, last_seq, created_at) VALUES (?,?,?,0,?)",
-                UuidBytes.toBytes(id), customer, rms[0], now);
+        jdbc.update("INSERT INTO conversation (id, customer_id, last_seq, created_at) VALUES (?,?,0,?)",
+                UuidBytes.toBytes(id), customer, now);
         jdbc.update("INSERT INTO conversation_participant (conversation_id, user_id, role, joined_at) VALUES (?,?,'CUSTOMER',?)",
                 UuidBytes.toBytes(id), customer, now);
         for (String rm : rms) {
@@ -2282,8 +2281,8 @@ cd "$(dirname "$0")/.."
 -- Demo data for the happy-path slice. Run after chat-service has started once (Flyway creates the tables).
 SET @conv = UNHEX(REPLACE('018f6b2a-0000-7000-8000-00000000c001', '-', ''));
 
-INSERT IGNORE INTO conversation (id, customer_id, first_rm_id, last_seq, created_at)
-VALUES (@conv, 'customer-1', 'rm-1', 0, NOW(3));
+INSERT IGNORE INTO conversation (id, customer_id, last_seq, created_at)
+VALUES (@conv, 'customer-1', 0, NOW(3));
 
 INSERT IGNORE INTO conversation_participant (conversation_id, user_id, role, joined_at)
 VALUES (@conv, 'customer-1', 'CUSTOMER', NOW(3)),

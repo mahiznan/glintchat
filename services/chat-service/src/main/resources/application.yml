@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: chat-service
+  datasource:
+    url: jdbc:mariadb://localhost:3306/${MARIADB_DATABASE}
+    username: ${MARIADB_USER}
+    password: ${MARIADB_PASSWORD}
+  artemis:
+    mode: native
+    broker-url: tcp://localhost:61616?blockOnNonDurableSend=true
+    user: ${ARTEMIS_USER}
+    password: ${ARTEMIS_PASSWORD}
+server:
+  port: 8080
+chat:
+  relay:
+    enabled: true
+    poll-delay-ms: 200
+    batch-size: 100
+  cors:
+    allowed-origin: http://localhost:8081

@@ -14,19 +14,20 @@ Decided (user, 2026-10-12):
 - Conversations are **never closed**. One long thread. A "close chat" button is a UI action only.
 - Retention: the customer's history is **hidden from the customer's view** after a period; nothing is deleted from the database; the RM's period is longer or unlimited. A visibility rule per role. Open: legal retention period, a new acceptance check S20 (`earliestAvailableSeq`, so retention is not mistaken for a gap), table growth and archiving (Module 11).
 - Only participants can read a conversation in the product; there is no supervisor read path. A separate compliance and investigation path must read MariaDB, not the broker (open in D18).
-- Proposed (to confirm): at most one conversation per customer and first RM. Starting again returns the existing one.
+- ~~Proposed: at most one conversation per customer and first RM.~~ Dropped 2026-10-15 with the AI persona (an AI-first conversation has no RM at creation). "One thread per customer or per topic" is open in D18; the slice's seed creates exactly one conversation.
 
 ### Schema draft (proposal built from the decisions above; finalized with Task 2)
 ```sql
 CREATE TABLE conversation (
   id           BINARY(16)   NOT NULL,                        -- conversationId, UUID v7
   customer_id  VARCHAR(64)  NOT NULL,
-  first_rm_id  VARCHAR(64)  NOT NULL,                        -- the RM who started or was first assigned
   last_seq     BIGINT       NOT NULL DEFAULT 0,              -- locked and incremented per message
   created_at   DATETIME(3)  NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_customer_first_rm (customer_id, first_rm_id)
+  KEY idx_customer (customer_id)
 ) ENGINE=InnoDB;
+-- Persona-neutral on purpose (2026-10-15): no RM column here. Who is in the chat, including a
+-- future AI participant, lives only in conversation_participant (see D18, "AI persona").
 
 CREATE TABLE conversation_participant (
   conversation_id    BINARY(16)   NOT NULL,
