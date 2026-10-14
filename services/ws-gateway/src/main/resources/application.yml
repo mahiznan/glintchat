@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: ws-gateway
+  artemis:
+    mode: native
+    broker-url: tcp://localhost:61616
+    user: ${ARTEMIS_USER}
+    password: ${ARTEMIS_PASSWORD}
+server:
+  port: 8081
+gateway:
+  # Names this pod's queue chat.events::<pod-id>. Set POD_ID to run more than one gateway locally.
+  pod-id: ${POD_ID:${HOSTNAME:local}}
+chat-service:
+  base-url: http://localhost:8080
