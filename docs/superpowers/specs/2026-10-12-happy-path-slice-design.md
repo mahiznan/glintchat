@@ -21,7 +21,7 @@ Design sources: `docs/chat-design.md` (schema, address, envelope), `docs/design-
 - Layout: two independent Maven projects, `services/chat-service` and `services/ws-gateway`. Dev ports: chat-service 8080, ws-gateway 8081, MariaDB 3306, Artemis 61616 (the lab stack).
 
 ## Data flow
-1. The page loads. It fetches history from chat-service (`GET /conversations/{id}/messages?afterSeq=0`, header `X-User-Id`, a development stub) and opens `ws://localhost:8081/ws?userId=...`. The gateway registers the socket under a new `sessionId` and sends `{type: ready, sessionId}`.
+1. The page loads. It fetches history from the gateway (`GET /conversations/{id}/messages?afterSeq=0`, header `X-User-Id`, a development stub; the gateway proxies to chat-service `/internal/...`; **changed 2026-10-15**, the first version called chat-service directly) and opens `ws://localhost:8081/ws?userId=...`. The gateway registers the socket under a new `sessionId` and sends `{type: ready, sessionId}`.
 2. The user sends. The page sends `{type: send, conversationId, clientMsgId, body}`. The gateway calls chat-service `POST /internal/conversations/{id}/messages` with `userId` and `originSessionId`. The gateway never publishes (D5).
 3. chat-service runs one transaction: lock the conversation row, check membership, check idempotency `(conversationId, senderId, clientMsgId)`, assign `seq = last_seq + 1`, insert the message, insert the outbox row with the envelope (participants snapshot), commit. It returns `{messageId, seq, duplicate}`; the gateway sends `{type: ack, clientMsgId, messageId, seq}` to the origin socket only.
 4. The relay (polling, `SELECT ... FOR UPDATE SKIP LOCKED`) publishes each unpublished row to the topic `chat.events` (non-persistent, blocking send so the broker confirms) and marks it published in the same transaction.
@@ -37,7 +37,7 @@ POST /internal/conversations/{conversationId}/messages
 -> 200 { "messageId": "uuid", "seq": 1, "clientMsgId": "uuid", "duplicate": false }
 -> 403 not an active participant; 404 unknown conversation; 400 invalid body
 ```
-History (page to chat-service; development CORS for `http://localhost:8081`):
+History (page to the gateway, which proxies to chat-service `GET /internal/conversations/{conversationId}/messages`; CORS on the gateway; **superseded 2026-10-15**, see D18):
 ```
 GET /conversations/{conversationId}/messages?afterSeq=0&limit=50     header X-User-Id
 -> 200 { "messages": [ { "messageId","seq","senderId","clientMsgId","type","body","createdAt" } ] }

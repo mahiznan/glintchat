@@ -11,5 +11,8 @@ server:
 gateway:
   # Names this pod's queue chat.events::<pod-id>. Set POD_ID to run more than one gateway locally.
   pod-id: ${POD_ID:${HOSTNAME:local}}
+  cors:
+    # The web origin allowed to call the gateway's REST from a browser. Default: the gateway serves the page itself.
+    allowed-origin: http://localhost:8081
 chat-service:
   base-url: http://localhost:8080

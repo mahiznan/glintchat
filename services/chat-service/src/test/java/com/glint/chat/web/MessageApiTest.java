@@ -35,7 +35,7 @@ class MessageApiTest extends IntegrationTestBase {
     }
 
     private Map<?, ?> history(UUID conv, String user, long afterSeq) {
-        return http().get().uri("/conversations/{id}/messages?afterSeq={a}", conv, afterSeq)
+        return http().get().uri("/internal/conversations/{id}/messages?afterSeq={a}", conv, afterSeq)
                 .header("X-User-Id", user).retrieve().body(Map.class);
     }
 

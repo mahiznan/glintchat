@@ -17,5 +17,3 @@ chat:
     enabled: true
     poll-delay-ms: 200
     batch-size: 100
-  cors:
-    allowed-origin: http://localhost:8081

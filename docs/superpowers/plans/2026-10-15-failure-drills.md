@@ -45,7 +45,7 @@ Drills are ordered from simple to complex. Within a group, later drills reuse th
 |---|---|
 | `services/ws-gateway/.../socket/SocketRegistry.java` (modify) | add `socketCount()` and `userCount()` |
 | `services/ws-gateway/.../DiagController.java` (create) | `GET /internal/diag` returns pod id, sockets, users, JVM threads (DEVELOPMENT only) |
-| `services/ws-gateway/src/main/resources/static/index.html` (modify) | accept `?gw=<port>&cs=<port>` so one page can talk to any gateway |
+| `services/ws-gateway/src/main/resources/static/index.html` (modify) | accept `?gw=<port>` so one page can talk to any gateway (socket and REST history both go through the gateway) |
 | `infra/drill-snapshot.sh` (create) | read-only picture of gateways, outbox, DB connections and locks, broker queues |
 | `infra/drill-proxies.sh` (create) | starts Toxiproxy and nginx and creates all proxies |
 | `infra/drill-lb.conf` (create) | nginx config: one front for the two chat-service instances |
@@ -67,7 +67,7 @@ Drills are ordered from simple to complex. Within a group, later drills reuse th
 |---|---|---|
 | chat-service 1 | 8080 | nginx upstream |
 | chat-service 2 | 8082 | nginx upstream |
-| nginx (LB for chat-service) | 8091 | Toxiproxy `cs-lb` on **8090** (gateways and the page use 8090) |
+| nginx (LB for chat-service) | 8091 | Toxiproxy `cs-lb` on **8090** (only the gateways use it; the page never calls chat-service) |
 | gateway 1 (`POD_ID=pod-1`) | 8081 | Toxiproxy `gw1-ws` on **18081** (clients use 18081) |
 | gateway 2 (`POD_ID=pod-2`) | 8083 | Toxiproxy `gw2-ws` on **18083** |
 | Artemis | 61616 | Toxiproxy `artemis-gw1` **61617**, `artemis-gw2` **61619**, `artemis-cs` **61618** |
@@ -156,14 +156,15 @@ public class DiagController {
 ```
 Run the whole gateway suite: `mvn -f services/ws-gateway/pom.xml test`. Expected: all pass (13 tests).
 
-- [ ] **Step 3: The page takes ports from the URL.** In `services/ws-gateway/src/main/resources/static/index.html` replace the line `const chatServiceUrl = 'http://localhost:8080';` with:
+- [ ] **Step 3: The page takes ports from the URL.** In `services/ws-gateway/src/main/resources/static/index.html` replace the line `const chatServiceUrl = 'http://localhost:8080';` with (final form after Step 3b below):
 
 ```js
   const gwPort = params.get('gw') || '8081';
-  const csPort = params.get('cs') || '8080';
-  const chatServiceUrl = 'http://localhost:' + csPort;
+  const gatewayHttp = 'http://localhost:' + gwPort;   // the page talks only to the gateway (socket and REST history)
 ```
 and replace `new WebSocket('ws://localhost:8081/ws?userId=' + encodeURIComponent(user))` with `new WebSocket('ws://localhost:' + gwPort + '/ws?userId=' + encodeURIComponent(user))`. Check the script: `sed -n '/<script>/,/<\/script>/p' services/ws-gateway/src/main/resources/static/index.html | sed '1d;$d' > "$TMPDIR/page.js" && node --check "$TMPDIR/page.js"`.
+
+- [x] **Step 3b (DONE 2026-10-15; the user decided FIX NOW after deciding that the MFE talks only to the gateway, D18; the gateway is one service for both socket and REST; the gateway-to-chat-service JWT is ignored in the slice).** Gateway: `ChatServiceClient.history(...)` (passes chat-service's status and body through) and `HistoryController` (`GET /conversations/{id}/messages`, header `X-User-Id` stub), `GatewayCorsConfig` (`gateway.cors.allowed-origin`), tests `ChatServiceClientTest`, `HistoryControllerTest`, `GatewayCorsTest`. chat-service: history moved to `/internal/conversations/{id}/messages`, `CorsConfig` and `chat.cors` deleted, `MessageApiTest` updated (20 tests pass). Page: history from the gateway, `cs` parameter removed. Effect on the drills: the page and the Node client talk only to the gateway ports (`18081`, `18083`); `8090` (nginx front) is used only by the gateways and by the `curl` drills against `/internal/...`. Drill A3, A9, A10 and F3 now exercise the production path (history through the gateway).
 
 - [ ] **Step 4: `infra/drill-client.mjs`** (Node 22+ has a global `WebSocket`):
 
@@ -356,15 +357,15 @@ Then `chmod +x infra/drill-snapshot.sh`.
 
 Terminal 1, chat-service 1:
 ```
-mvn -f services/chat-service/pom.xml spring-boot:run -Dspring-boot.run.arguments="--server.port=8080 --spring.datasource.url=jdbc:mariadb://localhost:3307/$MARIADB_DATABASE --spring.artemis.broker-url=tcp://localhost:61618?blockOnNonDurableSend=true --chat.cors.allowed-origin=http://localhost:8000"
+mvn -f services/chat-service/pom.xml spring-boot:run -Dspring-boot.run.arguments="--server.port=8080 --spring.datasource.url=jdbc:mariadb://localhost:3307/$MARIADB_DATABASE --spring.artemis.broker-url=tcp://localhost:61618?blockOnNonDurableSend=true"
 ```
 Terminal 2, chat-service 2: the same with `--server.port=8082`.
-Terminal 3, gateway 1: `POD_ID=pod-1 mvn -f services/ws-gateway/pom.xml spring-boot:run -Dspring-boot.run.arguments="--server.port=8081 --spring.artemis.broker-url=tcp://localhost:61617 --chat-service.base-url=http://localhost:8090"`
-Terminal 4, gateway 2: `POD_ID=pod-2 ... --server.port=8083 --spring.artemis.broker-url=tcp://localhost:61619 ...`
+Terminal 3, gateway 1: `POD_ID=pod-1 mvn -f services/ws-gateway/pom.xml spring-boot:run -Dspring-boot.run.arguments="--server.port=8081 --spring.artemis.broker-url=tcp://localhost:61617 --chat-service.base-url=http://localhost:8090 --gateway.cors.allowed-origin=http://localhost:8000"`
+Terminal 4, gateway 2: `POD_ID=pod-2 ... --server.port=8083 --spring.artemis.broker-url=tcp://localhost:61619 ...` (same `--chat-service.base-url` and `--gateway.cors.allowed-origin`)
 Terminal 5, the page: `python3 -m http.server 8000 --directory services/ws-gateway/src/main/resources/static`
 Terminal 6 (control): `./infra/drill-proxies.sh` (before the Java services), then `./infra/drill-snapshot.sh`.
 
-Expected: both gateways log `created queue chat.events::pod-1` / `pod-2`; the snapshot shows two gateways with 0 sockets and two queues. Page: `http://localhost:8000/?user=customer-1&gw=18081&cs=8090`.
+Expected: both gateways log `created queue chat.events::pod-1` / `pod-2`; the snapshot shows two gateways with 0 sockets and two queues. Page: `http://localhost:8000/?user=customer-1&gw=18081`.
 
 - [ ] **Step 10: Pause.** Review the environment with the user. Do not commit until told.
 
@@ -416,7 +417,7 @@ Setup for the whole group: gateways and chat-services running, page served on 80
 
 **A9. Anyone can be anyone (identity stub).**
 - Design says: the user id comes from a verified token (D18 item 1).
-- Do: open `http://localhost:8000/?user=rm-1&gw=18081&cs=8090` in a private window without any login.
+- Do: open `http://localhost:8000/?user=rm-1&gw=18081` in a private window without any login.
 - Observe: you read the RM's conversation. Record it as the known stub, with where the real check goes.
 
 **A10. A stranger and the same message sent twice.**

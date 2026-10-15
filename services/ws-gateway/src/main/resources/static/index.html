@@ -25,7 +25,9 @@
   const params = new URLSearchParams(location.search);
   const user = params.get('user') || 'customer-1';
   const conv = params.get('conv') || '018f6b2a-0000-7000-8000-00000000c001';
-  const chatServiceUrl = 'http://localhost:8080';
+  const gwPort = params.get('gw') || '8081';
+  // The page talks only to the gateway, for the socket and for REST history (chat-service is internal).
+  const gatewayHttp = 'http://localhost:' + gwPort;
   document.getElementById('title').textContent = 'Glint chat as ' + user;
 
   const messages = new Map();   // key: messageId, or clientMsgId while the message is pending
@@ -60,7 +62,7 @@
   }
 
   async function loadHistory() {
-    const res = await fetch(chatServiceUrl + '/conversations/' + conv + '/messages?afterSeq=0&limit=200',
+    const res = await fetch(gatewayHttp + '/conversations/' + conv + '/messages?afterSeq=0&limit=200',
                             { headers: { 'X-User-Id': user } });
     if (!res.ok) throw new Error('history failed: ' + res.status);
     (await res.json()).messages.forEach(addStored);
@@ -68,7 +70,7 @@
   }
 
   function connect() {
-    socket = new WebSocket('ws://localhost:8081/ws?userId=' + encodeURIComponent(user));
+    socket = new WebSocket('ws://localhost:' + gwPort + '/ws?userId=' + encodeURIComponent(user));
     socket.onopen = () => { document.getElementById('status').textContent = 'connected'; };
     socket.onclose = () => { document.getElementById('status').textContent = 'disconnected (reload the page to reconnect)'; };
     socket.onmessage = (e) => {

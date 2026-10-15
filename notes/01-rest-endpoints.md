@@ -51,7 +51,7 @@ Not exposed to the MFE. Authenticated service-to-service.
 | `POST /internal/messages` | The persist call from the gateway. Body: `conversationId`, `senderId`, `originSessionId`, `clientMsgId`, `body`, `traceId`. Returns `messageId`, `seq` only after the DB commit. |
 | `GET /internal/conversations/{id}/participants` | Used by the gateway to verify membership when a socket subscribes to a conversation (never trust the client). |
 | `POST /internal/receipts` | Delivered/read reports coming from clients, persisted and turned into status events. |
-| The read endpoints in section A | The gateway proxies these to chat-service. |
+| The read endpoints in section A | The gateway serves them to the MFE and proxies them here (decided 2026-10-15; not built in the slice yet). |
 
 ## C. Not REST
 - Live message push, typing indicators, presence changes, delivery/read status events to the sender: WebSocket frames.
@@ -62,4 +62,4 @@ Not exposed to the MFE. Authenticated service-to-service.
 - Whether resume replay should also be offered over the socket handshake (server-side replay) in addition to REST. Compare in Module 9.
 - Rate limits per user and per endpoint (protect `POST .../messages` and history fetches).
 - Maximum page size and body size limits.
-- Whether the MFE should call chat-service directly through the API gateway for reads, or always through the pod. Current draft: through the pod, for a single edge.
+- ~~Whether the MFE should call chat-service directly for reads, or always through the pod.~~ **Decided 2026-10-15 (user): the MFE talks only to the gateway, REST included.** The endpoints in section A are served by the gateway (authenticates the user, applies limits) and proxied to chat-service's internal API with a service-to-service credential. See D18. Still open: the service-to-service mechanism and how the verified user identity is passed.

@@ -42,8 +42,12 @@ public class MessageController {
         return new SendResponse(res.messageId(), res.seq(), res.clientMsgId(), res.duplicate());
     }
 
-    /** DEVELOPMENT: the caller is identified by the X-User-Id header. */
-    @GetMapping("/conversations/{conversationId}/messages")
+    /**
+     * Internal: called by the gateway on behalf of the MFE, which never calls chat-service (D18, 2026-10-15).
+     * DEVELOPMENT: the end user is identified by the X-User-Id header; a service credential and a verified user
+     * identity replace this.
+     */
+    @GetMapping("/internal/conversations/{conversationId}/messages")
     public HistoryResponse history(@PathVariable UUID conversationId,
                                    @RequestHeader("X-User-Id") String userId,
                                    @RequestParam(defaultValue = "0") long afterSeq,
