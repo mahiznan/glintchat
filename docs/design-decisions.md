@@ -67,7 +67,13 @@ A running record of decisions made while building the RM-to-customer bank chat, 
 - **Decision**: one active relay, chosen by a lease-based lock (ShedLock or MariaDB `GET_LOCK`). Standby pods take over after the lease expires. One relay is far above our needed throughput (100-170 msg/s).
 - **Why layers**: a paused leader (GC pause, network stall) can wake after its lease expired while a standby has taken over, so two relays briefly run. Therefore keep `SKIP LOCKED` (D7) and consumer dedupe (D9) underneath. Never trust one layer.
 - **Alternatives**: partition the outbox by `hash(conversationId) % N` with one relay per partition (more parts); or let consumers reorder by `seq` (display is fine, live arrival can be briefly out of order).
-- **Status**: Decided.
+- **Confirmed on 2026-10-15 (user): implement a single leader relay with ShedLock.** What it buys, and what it does not:
+  - *Buys*: per-conversation order at the broker (outbox ids of one conversation are in commit order because the send transaction holds the conversation row lock until commit; one publisher keeps that order), fewer gaps and refetches on the client, and no reordering after a failed send (a single relay rolls back the whole batch, so row 11 is never published before row 10). Not correctness: delivery correctness comes from at-least-once, dedupe and `afterSeq`.
+  - *Costs*: failover delay equal to the lease (no live events until a standby takes over; rows wait in the outbox, nothing is lost), one extra mechanism (`shedlock` table or `GET_LOCK`), and the lease length is a tuning choice (too short: two leaders overlap after a pause; too long: slow failover).
+  - *Reordering scenarios without it*: (1) two relays hold different rows of one conversation and the faster one publishes first; (2) relay A fails on row 10 and rolls back while relay B publishes row 11, so the broker gets 11 before 10.
+  - *Slice today*: every chat-service instance runs the relay with `SKIP LOCKED` only (no leader lock). Drill C8 measures how often reordering occurs; implementation is in the production plan after the drills.
+  - *To decide when implementing*: lease length and failover target, ShedLock vs `GET_LOCK`, and a metric or alert for "no relay leader" and for the outbox age.
+- **Status**: Decided (confirmed 2026-10-15); not built in the slice.
 
 ## D9. At-least-once delivery with idempotency everywhere
 - **Problem**: retries and failover cause duplicates; "publish" and "mark published" cannot be atomic across two systems.

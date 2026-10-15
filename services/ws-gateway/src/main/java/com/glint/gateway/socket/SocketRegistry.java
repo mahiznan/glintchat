@@ -20,6 +20,14 @@ public class SocketRegistry {
         });
     }
 
+    public int socketCount() {
+        return byUser.values().stream().mapToInt(Set::size).sum();
+    }
+
+    public int userCount() {
+        return byUser.size();
+    }
+
     public Set<ClientSocket> socketsOf(String userId) {
         return byUser.getOrDefault(userId, Set.of());
     }

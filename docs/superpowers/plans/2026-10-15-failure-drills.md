@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (inline, with a pause after every drill). Steps use checkbox (`- [ ]`) syntax. This plan is mostly **experiments the user runs**, not code. The few code and script steps are in Task 0.
 
-**Goal:** Break the minimal happy-path slice on purpose, one failure at a time, and record for each failure what the system actually does, whether our design says it should, and which resources are (or are not) released automatically.
+**Goal:** Break the minimal happy-path slice on purpose, one failure at a time, and record for each failure what the system actually does, whether our design says it should, and which resources are (or are not) released automatically. **Then decide, drill by drill, whether to fix the gap now** (as the design decisions prescribe) **or defer it**, so the product matures as the drills go and the design decisions get applied and proven in the code. *(Changed on 2026-10-15 at the user's request; before this the drills only recorded gaps.)*
 
 **Architecture:** The slice (chat-service on 8080, ws-gateway on 8081, lab Artemis, MariaDB) is run in "drill mode": two chat-service instances behind a small nginx, two gateways, and Toxiproxy between every pair of components so network faults (cut, slow, reset) can be injected without touching the code. A snapshot script prints the state of every component in one command. A small Node client plays the browser, including reconnecting.
 
@@ -11,12 +11,15 @@
 ## Global Constraints
 
 - **The user runs every drill command** and writes a prediction first (project rule). Claude prepares files, explains commands, reads the output the user pastes, and records results.
-- **Drills find gaps; they do not fix them.** A drill that shows a missing mechanism (no heartbeat, no timeout, no leader lock) is recorded as a GAP and carried to the next plan. Only Task 0 changes code, and only to make the system observable.
-- **No commits** until the user says "commit". Never commit `infra/.env`.
+- **Find, decide, fix, retest.** A drill first records what the **unfixed** slice does (prediction, observation, verdict). Only then do we decide, for each GAP or DESIGN-BUG, between **FIX NOW**, **DEFER** and **WON'T FIX** (decided by the user; Claude gives a recommendation with the size of the change and the risk). A fix is applied **as the design decision prescribes** (cite the D-number or the spec/chat-design section), and the drill is **run again** to confirm it. The first run's result is never overwritten: the register keeps the "before" row and adds the retest.
+- **Fix rules.** (1) A fix is made only after the user says "fix". (2) Small fix (a class, a setting, a test): done inline in this plan with the usual method: test first where it applies, explain every file and command, run the tests, say what changed. (3) Large fix (new component or protocol: Redis presence, authentication, the client sync protocol, notification-service, leader lock if it needs a new table plus tests across modules): it becomes its **own short plan** (writing-plans skill) and is executed next, or is DEFERRED to the backlog; it does not grow inside a drill. (4) A DESIGN-BUG changes the design documents first (spec, `docs/design-decisions.md`, sequence diagrams, `docs/chat-design.md`, `docs/architecture-diagram.md` and its image), then the code. (5) Every fix updates the documents it touches and the "Decided / To verify" status. (6) Later drills run on the fixed system: note in the register which fixes were already in when a drill ran, and re-check the Appendix A expectations of the remaining drills against the fixes made so far.
+- **Code changes are now allowed in every task**, but each one is traceable to a drill id and a decision. Task 0 changes code only to make the system observable.
+- **No commits** until the user says "commit". Never commit `infra/.env`. Suggested commit grain when asked: one commit per fix (code, tests and the documents it touches), referencing the drill id, so the history reads as drill → fix.
 - Java 21 for every Maven command: `export JAVA_HOME=$(/usr/libexec/java_home -v 21)`.
 - Do not start Docker Desktop for the user. Ask if it is not running.
 - Verdicts use exactly these words: **PASS** (design holds in the slice), **GAP** (design is right, slice lacks it), **DESIGN-BUG** (the design itself is wrong or incomplete; update the design documents), **UNKNOWN** (could not tell; retest).
-- Results go into `docs/failure-drills-results.md`, one row per drill.
+- Decisions use exactly these words: **FIX NOW**, **DEFER** (goes to the backlog with a reason), **WON'T FIX** (accepted, with the reason). After a fix, the retest result is **FIXED** (retest passed) or **STILL OPEN** (retest failed; fix again).
+- Results go into `docs/failure-drills-results.md`, one row per drill with the columns Verdict, Decision, and Fix and retest.
 - Read-only inspection commands may be run by Claude to check flags, announced first.
 
 ---
@@ -26,8 +29,11 @@
 1. Claude explains the failure, what the **design says should happen** (with the document reference), and each command.
 2. **User writes a prediction** in their own words (one or two sentences) in `docs/failure-drills-results.md` or in the chat.
 3. User runs the **Do** commands and the **Observe** commands, and pastes what they see.
-4. Claude compares with the design expectation and says plainly: PASS, GAP, DESIGN-BUG or UNKNOWN, and why, and where it would hurt in production.
-5. Claude records the row. Pause. Next drill only on "next".
+4. Claude compares with the design expectation and says plainly: PASS, GAP, DESIGN-BUG or UNKNOWN, and why, and where it would hurt in production. Claude records the **before** row.
+5. **Decide.** For every GAP or DESIGN-BUG Claude states: the design reference that prescribes the fix, the size (small / large), the risk, and a recommendation. The user chooses **FIX NOW / DEFER / WON'T FIX**. PASS needs no decision.
+6. **Fix (if FIX NOW).** Per the fix rules: design documents first if it is a DESIGN-BUG; test first where it applies; code; run the tests (Claude says so); explain every file and command; update the documents the fix touches. Large fixes get their own short plan.
+7. **Retest.** The user predicts again (one line: "now it should ..."), re-runs the same Do/Observe commands, and pastes the result. Claude records **FIXED** or **STILL OPEN**. Restart the services first (the drill environment runs the new code).
+8. Claude records the row (verdict, decision, fix, retest). Pause. Next drill only on "next". No commit until the user says "commit".
 
 Drills are ordered from simple to complex. Within a group, later drills reuse the state of earlier ones.
 
@@ -616,10 +622,10 @@ Fill this table from the drill results (one row each; evidence is the drill id).
 
 ---
 
-### Task 8: Record and hand over to the next plan
+### Task 8: Close the drills and hand over what is left
 
-- [ ] **Step 1:** finish `docs/failure-drills-results.md` (all rows have prediction, observation, verdict).
-- [ ] **Step 2:** add a section to `docs/design-decisions.md` (D18 or a new D26) listing every GAP and DESIGN-BUG with the drill id, and correct any design document whose statement a drill disproved.
+- [ ] **Step 1:** finish `docs/failure-drills-results.md` (all rows have prediction, observation, verdict, decision, and the fix and retest where applied).
+- [ ] **Step 2:** add a section to `docs/design-decisions.md` (D18 or a new D26) listing every GAP and DESIGN-BUG with the drill id and its outcome (FIXED, DEFER with reason, WON'T FIX with reason), and correct any design document whose statement a drill disproved. Re-run the whole suite and a final snapshot at rest to confirm the fixes did not break each other (regression pass over the drills that were FIXED).
 - [ ] **Step 3:** update `CLAUDE.md` section 4 and the roadmap row for this plan.
 - [ ] **Step 4:** show `git status` and a one-paragraph summary. Wait for "commit".
 
@@ -673,8 +679,8 @@ These are predictions from reading the code and the design, not facts. Several m
 
 ## Appendix B: Out of scope here
 
-Capacity and soak tests (Module 11), authentication and authorisation, Redis presence, the notification service, the AI persona, the membership features (second RM), the real client sync protocol, broker high availability (a platform topic), and production TLS. These belong to the next plan.
+Capacity and soak tests (Module 11), the AI persona, the membership features (second RM), broker high availability (a platform topic), and production TLS. Authentication, Redis presence, the notification service and the full client sync protocol are **large fixes**: a drill that exposes them is recorded, and the user decides between a short plan of their own and DEFER. Everything DEFERRED goes to the backlog below.
 
-## The next plan (to be written after the drills, as its own plan)
+## The backlog plan (written after the drills; only what was DEFERRED)
 
-"Production implementation from the design documents." Inputs: every GAP and DESIGN-BUG from the register, plus the open items in D18. The candidate backlog we already know about (not yet planned in detail): heartbeat and idle timeout; client reconnect with the sync protocol and backoff (S1-S20); readiness and liveness probes; graceful shutdown; HTTP, JDBC and JMS timeouts; a pooled or cached publisher connection; relay leader lock and error backoff; queue re-creation after connection loss; address settings (`FAIL`, TTL, dead-letter, size); outbox cleanup job; authentication and service-to-service security; size and rate limits; observability (metrics, tracing, alerts); `chat.notifications` and the notification service; Redis presence; the membership and retention rules; the AI persona; the Artemis client version pin. It is written with the writing-plans skill only when the drills are finished.
+"Production implementation from the design documents." Since fixes are now applied drill by drill, this plan contains only the items marked DEFER in the register, plus the open items in D18 and the large items that got no plan of their own. The candidate backlog we already know about (each item is fixed during the drills if the user chooses FIX NOW, otherwise it stays here): heartbeat and idle timeout; client reconnect with the sync protocol and backoff (S1-S20); readiness and liveness probes; graceful shutdown; HTTP, JDBC and JMS timeouts; a pooled or cached publisher connection; relay leader lock and error backoff; queue re-creation after connection loss; address settings (`FAIL`, TTL, dead-letter, size); outbox cleanup job; authentication and service-to-service security; size and rate limits; observability (metrics, tracing, alerts); `chat.notifications` and the notification service; Redis presence; the membership and retention rules; the AI persona; the Artemis client version pin. It is written with the writing-plans skill only when the drills are finished.
