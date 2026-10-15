@@ -6,7 +6,7 @@ The *Prediction* column is the user's, written **before** the run. Claude's own 
 
 | ID | Drill | Prediction (user) | Observed | Verdict | Gap or design change; decision and design reference | Fix applied and retest result |
 |---|---|---|---|---|---|---|
-| A1 | Customer closes the tab (clean close) | | | | | |
+| A1 | Customer closes the tab (clean close) | (none written before the run) | Before: pod-1 sockets 2, users 2; pod-2 2/2; 4 lsof lines on 18081 and on 8081; pod queues 1 consumer, ADDED 10, ACKED 10. After close: pod-1 sockets 1, users 1; pod-2 unchanged; 2 lsof lines on each port (one whole chain gone: browser, Toxiproxy and gateway sides); queues unchanged. Reopening the tab registered a new socket and messages flowed. threads stayed 32 (31 at rest, 32 with 1 or 2 sockets). | **PASS** | No gap. Notes: `threads` is a coarse indicator (Tomcat keeps pooled workers), so A5 is the real leak test; `Sleep 23` DB connections vs 20 expected is unexplained (look again in E4). | n/a |
 | A2 | Customer network disappears without a close (half-open) | | | | | |
 | A3 | Page refresh during a burst of incoming messages | | | | | |
 | A4 | Same user on three tabs and two gateways | | | | | |

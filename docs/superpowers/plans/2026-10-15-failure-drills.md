@@ -287,6 +287,8 @@ http {
     listen 8091;
     location / {
       proxy_pass http://chat_service;
+      # Without this nginx sends "Host: chat_service" (the upstream name); Tomcat rejects an underscore with 400.
+      proxy_set_header Host $host;
       proxy_connect_timeout 1s;
       proxy_next_upstream error timeout;
     }
